@@ -114,7 +114,10 @@ class DMLMDataset(Dataset):
 
         probability_matrix.masked_fill_(special_tokens_mask, value=0.0)
         masked_indices = torch.bernoulli(probability_matrix).bool()
-        labels[~masked_indices] = -100  # We only compute loss on masked tokens
+        defined_token_id = self.tokenizer.convert_tokens_to_ids(self.defined_special_token)
+        defined_token_mask = inputs == defined_token_id
+        ignored_indices = torch.logical_and(~masked_indices, ~defined_token_mask)
+        labels[ignored_indices] = -100  # We only compute loss on masked tokens
 
         # 80% of the time, we replace masked input tokens with tokenizer.mask_token ([MASK])
         indices_replaced = (
@@ -191,7 +194,7 @@ class DMLMDataset(Dataset):
                 "input_ids": inputs,
                 "attention_mask": torch.ones_like(inputs),
                 "labels": labels,
-                "sense": snt[instance_idx].labels[0]
+                "sense": snt[instance_idx].labels[0],
             }
 
         print("Materializing final dataset...")
