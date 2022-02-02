@@ -67,6 +67,3 @@ class BasePLDataModule(pl.LightningDataModule):
 
     def test_dataloader(self, *args, **kwargs) -> Union[DataLoader, List[DataLoader]]:
         raise NotImplementedError
-
-    def transfer_batch_to_device(self, batch: Any, device: torch.device) -> Any:
-        raise NotImplementedError
