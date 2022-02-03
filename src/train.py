@@ -47,7 +47,6 @@ def train(conf: omegaconf.DictConfig) -> None:
 
 @hydra.main(config_path="../conf", config_name="root")
 def main(conf: omegaconf.DictConfig):
-
     def fix(conf):
         """
         fix paths

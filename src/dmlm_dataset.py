@@ -233,6 +233,9 @@ class DMLMDataset(Dataset):
             ),
         )
 
+    def __len__(self) -> int:
+        return len(self.final_dataset)
+
 
 def main():
 
@@ -241,7 +244,7 @@ def main():
     )
 
     dmlm_dataset = DMLMDataset(
-        {"/home/edobobo/PycharmProjects/dmlm/data/datasets/oxford/oxf.0": "oxford"},
+        {"oxford": ["/home/edobobo/PycharmProjects/dmlm/data/datasets/oxford/oxf.0"]},
         {"oxford": oxford_inventory},
         "bert-base-cased",
         "[DEF]",
