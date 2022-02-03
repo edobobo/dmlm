@@ -1,4 +1,3 @@
-# @package _group_
 _target_: src.pl_modules.BERTDMLM
 transformer_model: bert-base-cased
 num_layers: 6

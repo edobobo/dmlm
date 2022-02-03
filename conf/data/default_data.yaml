@@ -1,5 +1,3 @@
-# @package _group_
-
 defined_special_token: "[DEF]"
 definition_special_token: "[DEFINITION]"
 mlm_probability: 0.15
