@@ -29,7 +29,7 @@ class BERTDMLM(pl.LightningModule):
         self.bert_model = BertForMaskedLM(bert_config)
 
         if additional_special_tokens is not None and additional_special_tokens > 0:
-            self.classifier.resize_token_embeddings(
+            self.bert_model.resize_token_embeddings(
                 bert_config.vocab_size + additional_special_tokens
             )
 
