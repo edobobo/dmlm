@@ -42,7 +42,7 @@ class BERTDMLM(pl.LightningModule):
         labels: torch.Tensor,
         **kwargs
     ) -> dict:
-        model_output = self.bert_model(input_ids, attention_mask, labels)
+        model_output = self.bert_model(input_ids, attention_mask, labels=labels)
         output_dict = {"loss": model_output.loss}
         return output_dict
 
