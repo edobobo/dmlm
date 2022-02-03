@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, Optional
 
 import hydra
 from transformers import BertForMaskedLM, AutoConfig
@@ -15,6 +15,7 @@ class BERTDMLM(pl.LightningModule):
         hidden_size: int,
         num_heads: int,
         optim_conf: dict,
+        additional_special_tokens: Optional[int] = None,
     ) -> None:
         super().__init__()
         self.save_hyperparameters()
@@ -26,6 +27,11 @@ class BERTDMLM(pl.LightningModule):
             num_attention_heads=num_heads,
         )
         self.bert_model = BertForMaskedLM(bert_config)
+
+        if additional_special_tokens is not None and additional_special_tokens > 0:
+            self.classifier.resize_token_embeddings(
+                bert_config.vocab_size + additional_special_tokens
+            )
 
         self.optim_conf = optim_conf
 

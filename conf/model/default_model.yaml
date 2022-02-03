@@ -3,6 +3,7 @@ transformer_model: bert-base-cased
 num_layers: 6
 hidden_size: 512
 num_heads: 8
+additional_special_tokens: 2
 optim_conf:
   _target_: src.utils.optimizers.RAdam
   lr: 1e-5
