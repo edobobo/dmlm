@@ -12,26 +12,26 @@ class DMLMPLDataModule(pl.LightningDataModule):
         super().__init__()
         self.conf = conf
         self.inventories = hydra.utils.instantiate(self.conf.data.inventories)
-
-    def train_dataloader(self, *args, **kwargs) -> DataLoader:
-        train_dataset = hydra.utils.instantiate(
+        self.train_dataset = hydra.utils.instantiate(
             self.conf.data.train_dataset, inventories=self.inventories
         )
+        self.validation_dataset = hydra.utils.instantiate(
+            self.conf.data.validation_dataset, inventories=self.inventories
+        )
+
+    def train_dataloader(self, *args, **kwargs) -> DataLoader:
         return DataLoader(
-            dataset=train_dataset,
+            dataset=self.train_dataset,
             batch_size=self.conf.data.train_batch_size,
-            collate_fn=lambda x: train_dataset.collate_function(x),
+            collate_fn=lambda x: self.train_dataset.collate_function(x),
             shuffle=True,
         )
 
     def val_dataloader(self, *args, **kwargs) -> Union[DataLoader, List[DataLoader]]:
-        validation_dataset = hydra.utils.instantiate(
-            self.conf.data.validation_dataset, inventories=self.inventories
-        )
         return DataLoader(
-            dataset=validation_dataset,
+            dataset=self.validation_dataset,
             batch_size=self.conf.data.validation_batch_size,
-            collate_fn=lambda x: validation_dataset.collate_function(x),
+            collate_fn=lambda x: self.validation_dataset.collate_function(x),
             shuffle=True,
         )
 

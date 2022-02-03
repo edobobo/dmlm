@@ -20,6 +20,7 @@ def train(conf: omegaconf.DictConfig) -> None:
 
     # main module declaration
     pl_module = hydra.utils.instantiate(conf.model)
+    pl_module.set_train_dataset(pl_data_module.train_dataset)
 
     # callbacks declaration
     callbacks_store = []

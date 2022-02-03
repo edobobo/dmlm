@@ -6,6 +6,8 @@ from transformers import BertForMaskedLM, AutoConfig
 import pytorch_lightning as pl
 import torch
 
+from src.dmlm_dataset import DMLMDataset
+
 
 class BERTDMLM(pl.LightningModule):
     def __init__(
@@ -60,3 +62,9 @@ class BERTDMLM(pl.LightningModule):
 
     def configure_optimizers(self):
         return hydra.utils.instantiate(self.optim_conf, params=self.parameters())
+
+    def set_train_dataset(self, train_dataset: DMLMDataset):
+        self.train_dataset = train_dataset
+
+    def on_validation_epoch_end(self) -> None:
+        self.train_dataset.init_final_dataset()

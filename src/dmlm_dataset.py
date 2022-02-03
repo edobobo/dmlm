@@ -56,7 +56,7 @@ class DMLMDataset(Dataset):
 
         self._init_datasets(inventory2datasets)
         self._init_sense_inverse_frequencies()
-        self._init_final_dataset()
+        self.init_final_dataset()
 
     def __getitem__(self, index: int) -> Dict[str, Any]:
         return self.final_dataset[index]
@@ -146,7 +146,7 @@ class DMLMDataset(Dataset):
         # The rest of the time (10% of the time) we keep the masked input tokens unchanged
         return inputs, labels
 
-    def _init_final_dataset(self) -> None:
+    def init_final_dataset(self) -> None:
         def pick_instance(snt: List[WSDInstance]) -> int:
             selectable_instances_idx = [
                 idx for idx, inst in enumerate(snt) if inst.labels is not None
