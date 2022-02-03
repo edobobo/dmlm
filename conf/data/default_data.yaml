@@ -11,7 +11,7 @@ inventories:
 
 train_batch_size: 16
 train_dataset:
-  _target_: src.dmlm_dataset.BERTDMLM
+  _target_: src.dmlm_dataset.DMLMDataset
   data2inventories:
     data/oxford/dataset_path: oxford
   transformer_model: ${model.transformer_model}
@@ -21,7 +21,7 @@ train_dataset:
 
 validation_batch_size: 16
 validation_dataset:
-  _target_: src.dmlm_dataset.BERTDMLM
+  _target_: src.dmlm_dataset.DMLMDataset
   data2inventories:
     data/oxford/dataset_path: oxford
   transformer_model: ${model.transformer_model}
