@@ -1,25 +1,43 @@
 from typing import Any
 
+import hydra
+from transformers import BertForMaskedLM, AutoConfig
+
 import pytorch_lightning as pl
 import torch
 
 
-class BasePLModule(pl.LightningModule):
-    def __init__(self, conf, *args, **kwargs) -> None:
+class BERTDMLM(pl.LightningModule):
+    def __init__(
+        self,
+        transformer_model: str,
+        num_layers: int,
+        hidden_size: int,
+        num_heads: int,
+        optim_conf: dict,
+    ) -> None:
         super().__init__()
-        self.save_hyperparameters(conf)
+        self.save_hyperparameters()
 
-    def forward(self, **kwargs) -> dict:
-        """
-        Method for the forward pass.
-        'training_step', 'validation_step' and 'test_step' should call
-        this method in order to compute the output predictions and the loss.
+        bert_config = AutoConfig.from_pretrained(
+            transformer_model,
+            hidden_size=hidden_size,
+            num_hidden_layers=num_layers,
+            num_attention_heads=num_heads,
+        )
+        self.bert_model = BertForMaskedLM(bert_config)
 
-        Returns:
-            output_dict: forward output containing the predictions (output logits ecc...) and the loss if any.
+        self.optim_conf = optim_conf
 
-        """
-        output_dict = {}
+    def forward(
+        self,
+        input_ids: torch.Tensor,
+        attention_mask: torch.Tensor,
+        labels: torch.Tensor,
+        **kwargs
+    ) -> dict:
+        model_output = self.bert_model(input_ids, attention_mask, labels)
+        output_dict = {"loss": model_output.loss}
         return output_dict
 
     def training_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
@@ -35,21 +53,4 @@ class BasePLModule(pl.LightningModule):
         raise NotImplementedError
 
     def configure_optimizers(self):
-        """
-        FROM PYTORCH LIGHTNING DOCUMENTATION
-
-        Choose what optimizers and learning-rate schedulers to use in your optimization.
-        Normally you'd need one. But in the case of GANs or similar you might have multiple.
-
-        Return:
-            Any of these 6 options.
-
-            - Single optimizer.
-            - List or Tuple - List of optimizers.
-            - Two lists - The first list has multiple optimizers, the second a list of LR schedulers (or lr_dict).
-            - Dictionary, with an 'optimizer' key, and (optionally) a 'lr_scheduler'
-              key whose value is a single LR scheduler or lr_dict.
-            - Tuple of dictionaries as described, with an optional 'frequency' key.
-            - None - Fit will run without any optimizer.
-        """
-        raise NotImplementedError
+        return hydra.utils.instantiate(self.optim_conf, params=self.parameters())

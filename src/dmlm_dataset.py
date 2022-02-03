@@ -9,14 +9,30 @@ from torch.utils.data import Dataset
 
 from transformers import AutoTokenizer
 
+from src.utils.nns import batchify
 from src.utils.wsd import WSDInstance, expand_raganato_path, read_from_raganato
+
+
+class SenseInventory:
+    def __init__(self, inventory_path: str):
+        self.inventory_store = dict()
+        self.load_inventory(inventory_path)
+
+    def load_inventory(self, inv_path: str) -> None:
+        with open(inv_path) as f:
+            for line in f:
+                sense_key, _, _, definition = line.strip().split("\t")
+                self.inventory_store[sense_key] = definition
+
+    def __getitem__(self, item):
+        return self.inventory_store[item]
 
 
 class DMLMDataset(Dataset):
     def __init__(
         self,
         data2inventories: Dict[str, str],
-        inventory_paths: Dict[str, str],
+        inventories: Dict[str, SenseInventory],
         transformer_model: str,
         defined_special_token: str,
         definition_special_token: str,
@@ -24,7 +40,7 @@ class DMLMDataset(Dataset):
     ):
         self.datasets: List[List[List[WSDInstance]]] = []
         self.datasets_inventory: List[str] = []
-        self.inventories: Dict[str, Dict[str, str]] = dict()
+        self.inventories: Dict[str, SenseInventory] = inventories
         self.sense_inverse_frequencies: Dict[str, float] = dict()
 
         self.defined_special_token = defined_special_token
@@ -38,30 +54,16 @@ class DMLMDataset(Dataset):
 
         self.final_dataset: List[Dict[str, Any]] = []
 
-        self._init_datasets_and_inventories(data2inventories, inventory_paths)
+        self._init_datasets(data2inventories)
         self._init_sense_inverse_frequencies()
         self._init_final_dataset()
 
     def __getitem__(self, index: int) -> Dict[str, Any]:
         return self.final_dataset[index]
 
-    def _init_datasets_and_inventories(
-        self, data2inventory_paths: Dict[str, str], inventory_paths: Dict[str, str]
-    ) -> None:
+    def _init_datasets(self, data2inventory_paths: Dict[str, str]) -> None:
         def load_dataset(dst_path: str) -> List[List[WSDInstance]]:
             return [x[-1] for x in read_from_raganato(*expand_raganato_path(dst_path))]
-
-        def load_inventory(inv_path: str) -> Dict[str, str]:
-            inventory_store = dict()
-            with open(inv_path) as f:
-                for line in f:
-                    sense_key, _, _, definition = line.strip().split("\t")
-                    inventory_store[sense_key] = definition
-            return inventory_store
-
-        print("Initializing inventories...")
-        for inventory_name, inventory_path in inventory_paths.items():
-            self.inventories[inventory_name] = load_inventory(inventory_path)
 
         print("Initializing datasets...")
         for dataset_path, inventory_name in data2inventory_paths.items():
@@ -114,7 +116,9 @@ class DMLMDataset(Dataset):
 
         probability_matrix.masked_fill_(special_tokens_mask, value=0.0)
         masked_indices = torch.bernoulli(probability_matrix).bool()
-        defined_token_id = self.tokenizer.convert_tokens_to_ids(self.defined_special_token)
+        defined_token_id = self.tokenizer.convert_tokens_to_ids(
+            self.defined_special_token
+        )
         defined_token_mask = inputs == defined_token_id
         ignored_indices = torch.logical_and(~masked_indices, ~defined_token_mask)
         labels[ignored_indices] = -100  # We only compute loss on masked tokens
@@ -212,11 +216,32 @@ class DMLMDataset(Dataset):
                 )
                 self.final_dataset.append(encoding_output)
 
+    def collate_function(self, samples: List[Dict[str, Any]]) -> Dict[str, Any]:
+        return dict(
+            input_ids=batchify(
+                [sample["input_ids"] for sample in samples],
+                padding_value=self.tokenizer.pad_token_id,
+            ),
+            attention_mask=batchify(
+                [sample["attention_mask"] for sample in samples],
+                padding_value=0,
+            ),
+            labels=batchify(
+                [sample["labels"] for sample in samples],
+                padding_value=-100,
+            ),
+        )
+
 
 def main():
+
+    oxford_inventory = SenseInventory(
+        "/home/edobobo/PycharmProjects/dmlm/data/inventories/oxf.tsv"
+    )
+
     dmlm_dataset = DMLMDataset(
         {"/home/edobobo/PycharmProjects/dmlm/data/datasets/oxford/oxf.0": "oxford"},
-        {"oxford": "/home/edobobo/PycharmProjects/dmlm/data/inventories/oxf.tsv"},
+        {"oxford": oxford_inventory},
         "bert-base-cased",
         "[DEF]",
         "[DEFINITION]",

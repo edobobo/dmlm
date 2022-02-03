@@ -1,3 +1,10 @@
 # @package _group_
-
-model_feature: 'fantastic_model_feature'
+_target_: src.pl_modules.BERTDMLM
+transformer_model: bert-base-cased
+num_layers: 6
+hidden_size: 512
+num_heads: 8
+optim_conf:
+  _target_: src.utils.optimizers.RAdam
+  lr: 1e-5
+  weight_decay: 0.01

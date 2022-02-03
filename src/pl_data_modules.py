@@ -1,69 +1,39 @@
-from typing import Any, Union, List, Optional
+from typing import Union, List
 
+import hydra.utils
 from omegaconf import DictConfig
 
-import torch
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 
 
-class BasePLDataModule(pl.LightningDataModule):
-    """
-    FROM LIGHTNING DOCUMENTATION
-
-    A DataModule standardizes the training, val, test splits, data preparation and transforms.
-    The main advantage is consistent data splits, data preparation and transforms across models.
-
-    Example::
-
-        class MyDataModule(LightningDataModule):
-            def __init__(self):
-                super().__init__()
-            def prepare_data(self):
-                # download, split, etc...
-                # only called on 1 GPU/TPU in distributed
-            def setup(self):
-                # make assignments here (val/train/test split)
-                # called on every process in DDP
-            def train_dataloader(self):
-                train_split = Dataset(...)
-                return DataLoader(train_split)
-            def val_dataloader(self):
-                val_split = Dataset(...)
-                return DataLoader(val_split)
-            def test_dataloader(self):
-                test_split = Dataset(...)
-                return DataLoader(test_split)
-
-    A DataModule implements 5 key methods:
-
-    * **prepare_data** (things to do on 1 GPU/TPU not on every GPU/TPU in distributed mode).
-    * **setup**  (things to do on every accelerator in distributed mode).
-    * **train_dataloader** the training dataloader.
-    * **val_dataloader** the val dataloader(s).
-    * **test_dataloader** the test dataloader(s).
-
-
-    This allows you to share a full dataset without explaining how to download,
-    split transform and process the data
-
-    """
-
+class DMLMPLDataModule(pl.LightningDataModule):
     def __init__(self, conf: DictConfig):
         super().__init__()
         self.conf = conf
-
-    def prepare_data(self, *args, **kwargs):
-        raise NotImplementedError
-
-    def setup(self, stage: Optional[str] = None):
-        raise NotImplementedError
+        self.inventories = hydra.utils.instantiate(self.conf.data.inventories)
 
     def train_dataloader(self, *args, **kwargs) -> DataLoader:
-        raise NotImplementedError
+        train_dataset = hydra.utils.instantiate(
+            self.conf.data.train_dataset, inventories=self.inventories
+        )
+        return DataLoader(
+            dataset=train_dataset,
+            batch_size=self.conf.data.train_batch_size,
+            collate_fn=lambda x: train_dataset.collate_function(x),
+            shuffle=True,
+        )
 
     def val_dataloader(self, *args, **kwargs) -> Union[DataLoader, List[DataLoader]]:
-        raise NotImplementedError
+        validation_dataset = hydra.utils.instantiate(
+            self.conf.data.validation_dataset, inventories=self.inventories
+        )
+        return DataLoader(
+            dataset=validation_dataset,
+            batch_size=self.conf.data.validation_batch_size,
+            collate_fn=lambda x: validation_dataset.collate_function(x),
+            shuffle=True,
+        )
 
     def test_dataloader(self, *args, **kwargs) -> Union[DataLoader, List[DataLoader]]:
         raise NotImplementedError
