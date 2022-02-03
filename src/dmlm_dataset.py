@@ -66,7 +66,7 @@ class DMLMDataset(Dataset):
             return [x[-1] for x in read_from_raganato(*expand_raganato_path(dst_path))]
 
         print("Initializing datasets...")
-        for inventory_name, inventory_datasets in inventory2datasets:
+        for inventory_name, inventory_datasets in inventory2datasets.items():
             for dataset_path in inventory_datasets:
                 self.datasets.append(load_dataset(dataset_path))
                 self.datasets_inventory.append(inventory_name)
