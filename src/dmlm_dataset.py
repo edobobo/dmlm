@@ -31,7 +31,7 @@ class SenseInventory:
 class DMLMDataset(Dataset):
     def __init__(
         self,
-        data2inventories: Dict[str, str],
+        inventory2datasets: Dict[str, List[str]],
         inventories: Dict[str, SenseInventory],
         transformer_model: str,
         defined_special_token: str,
@@ -54,21 +54,22 @@ class DMLMDataset(Dataset):
 
         self.final_dataset: List[Dict[str, Any]] = []
 
-        self._init_datasets(data2inventories)
+        self._init_datasets(inventory2datasets)
         self._init_sense_inverse_frequencies()
         self._init_final_dataset()
 
     def __getitem__(self, index: int) -> Dict[str, Any]:
         return self.final_dataset[index]
 
-    def _init_datasets(self, data2inventory_paths: Dict[str, str]) -> None:
+    def _init_datasets(self, inventory2datasets: Dict[str, List[str]]) -> None:
         def load_dataset(dst_path: str) -> List[List[WSDInstance]]:
             return [x[-1] for x in read_from_raganato(*expand_raganato_path(dst_path))]
 
         print("Initializing datasets...")
-        for dataset_path, inventory_name in data2inventory_paths.items():
-            self.datasets.append(load_dataset(dataset_path))
-            self.datasets_inventory.append(inventory_name)
+        for inventory_name, inventory_datasets in inventory2datasets:
+            for dataset_path in inventory_datasets:
+                self.datasets.append(load_dataset(dataset_path))
+                self.datasets_inventory.append(inventory_name)
 
     def _init_sense_inverse_frequencies(self) -> None:
         print("Computing senses inverse frequencies")
