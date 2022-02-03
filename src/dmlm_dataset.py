@@ -215,6 +215,10 @@ class DMLMDataset(Dataset):
                 encoding_output = encode_and_apply_masking(
                     sentence, chosen_instance, instance_definition
                 )
+
+                if len(encoding_output["input_ids"]) >= self.tokenizer.model_max_length:
+                    continue
+
                 self.final_dataset.append(encoding_output)
 
     def collate_function(self, samples: List[Dict[str, Any]]) -> Dict[str, Any]:
