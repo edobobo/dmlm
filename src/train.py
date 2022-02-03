@@ -45,6 +45,32 @@ def train(conf: omegaconf.DictConfig) -> None:
 
 @hydra.main(config_path="../conf", config_name="root")
 def main(conf: omegaconf.DictConfig):
+
+    def fix(conf):
+        """
+        fix paths
+        """
+        if type(conf) == list or type(conf) == omegaconf.listconfig.ListConfig:
+            for i in range(len(conf)):
+                conf[i] = fix(conf[i])
+            return conf
+        elif type(conf) == dict or type(conf) == omegaconf.dictconfig.DictConfig:
+            for k, v in conf.items():
+                conf[k] = fix(v)
+            return conf
+        elif type(conf) == str:
+            if "/" in conf and os.path.exists(
+                hydra.utils.to_absolute_path(conf[: conf.rindex("/")])
+            ):
+                return hydra.utils.to_absolute_path(conf)
+            else:
+                return conf
+        elif type(conf) in [float, int, bool]:
+            return conf
+        else:
+            raise ValueError(f"Unexpected type {type(conf)}: {conf}")
+
+    fix(conf)
     train(conf)
 
 
