@@ -8,3 +8,4 @@ optim_conf:
   _target_: src.utils.optimizers.RAdam
   lr: 1e-5
   weight_decay: 0.01
+_recursive_: False
