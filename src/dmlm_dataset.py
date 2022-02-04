@@ -244,6 +244,8 @@ class DMLMDataset(Dataset):
                     continue
 
                 self.final_dataset.append(encoding_output)
+        
+        print("Total instances in the dataset: ", len(self.final_dataset))
 
     def collate_function(self, samples: List[Dict[str, Any]]) -> Dict[str, Any]:
         return dict(

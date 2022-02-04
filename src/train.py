@@ -37,9 +37,14 @@ def train(conf: omegaconf.DictConfig) -> None:
         )
         callbacks_store.append(model_checkpoint_callback)
 
+    # logger
+    logger = hydra.utils.instantiate(
+        conf.logger
+    )
+
     # trainer
     trainer: Trainer = hydra.utils.instantiate(
-        conf.train.pl_trainer, callbacks=callbacks_store
+        conf.train.pl_trainer, callbacks=callbacks_store, logger=logger
     )
 
     # module fit
