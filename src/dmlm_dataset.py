@@ -149,6 +149,7 @@ class BaseMLMDataset(MLMDataset):
                     break
 
     def init_final_dataset(self) -> None:
+        self.final_dataset = []
         tokenized_sentences = self.tokenizer(self.dataset_store)
         for sentence_idx in range(len(self.dataset_store)):
             input_ids = torch.tensor(
