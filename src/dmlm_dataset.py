@@ -146,7 +146,7 @@ class BaseMLMDataset(MLMDataset):
                     " ".join([wi.annotated_token.text for wi in wsd_sentence])
                 )
                 if limit is not None and len(self.final_dataset) == limit:
-                    continue
+                    break
 
     def init_final_dataset(self) -> None:
         tokenized_sentences = self.tokenizer(self.dataset_store)
