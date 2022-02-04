@@ -13,12 +13,15 @@ pl_trainer:
   val_check_interval: 1.0
   max_steps: 1_000_000
   precision: 16
+  num_sanity_val_steps: 0
+
+monitor_metric: val_loss/dataloader_idx_0
 
 # early stopping callback
 # "early_stopping_callback: null" will disable early stopping
 early_stopping_callback:
   _target_: pytorch_lightning.callbacks.EarlyStopping
-  monitor: val_loss
+  monitor: ${train.monitor_metric}
   mode: min
   patience: 50
 
@@ -26,8 +29,8 @@ early_stopping_callback:
 # "model_checkpoint_callback: null" will disable model checkpointing
 model_checkpoint_callback:
   _target_: pytorch_lightning.callbacks.ModelCheckpoint
-  monitor: val_loss
+  monitor: ${train.monitor_metric}
   mode: min
   verbose: True
-  save_top_k: 5
+  save_top_k: 2
   dirpath: experiments/${train.model_name}

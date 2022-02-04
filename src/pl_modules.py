@@ -42,7 +42,7 @@ class BERTDMLM(pl.LightningModule):
         input_ids: torch.Tensor,
         attention_mask: torch.Tensor,
         labels: torch.Tensor,
-        **kwargs
+        **kwargs,
     ) -> dict:
         model_output = self.bert_model(input_ids, attention_mask, labels=labels)
         output_dict = {"loss": model_output.loss}
@@ -53,7 +53,9 @@ class BERTDMLM(pl.LightningModule):
         self.log("loss", forward_output["loss"])
         return forward_output["loss"]
 
-    def validation_step(self, batch: dict, batch_idx: int) -> None:
+    def validation_step(
+        self, batch: dict, batch_idx: int, dataloader_idx: Optional[int] = None
+    ) -> None:
         forward_output = self.forward(**batch)
         self.log("val_loss", forward_output["loss"])
 

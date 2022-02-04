@@ -36,13 +36,18 @@ train_dataset:
 
 validation_batch_size: 16
 validation_dataset:
-  _target_: src.dmlm_dataset.DMLMDataset
-  inventory2datasets:
-    oxford:
-      - data/datasets/oxford/oxf.0.validation
-  transformer_model: ${model.transformer_model}
-  defined_special_token: ${data.defined_special_token}
-  definition_special_token: ${data.definition_special_token}
-  mlm_probability: ${data.mlm_probability}
+  - _target_: src.dmlm_dataset.DMLMDataset
+    inventory2datasets:
+      oxford:
+        - data/datasets/oxford/oxf.0.validation
+    transformer_model: ${model.transformer_model}
+    defined_special_token: ${data.defined_special_token}
+    definition_special_token: ${data.definition_special_token}
+    mlm_probability: ${data.mlm_probability}
+  - _target_: src.dmlm_dataset.BaseMLMDataset
+    datasets_path: [data/datasets/oxford/oxf.0.validation.data.xml]
+    transformer_model: ${model.transformer_model}
+    mlm_probability: ${data.mlm_probability}
+    limit: 1000
 
 num_workers: 0
