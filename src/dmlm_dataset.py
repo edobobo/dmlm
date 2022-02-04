@@ -366,6 +366,7 @@ class DMLMDataset(MLMDataset):
             }
 
         print("Materializing final dataset...")
+        self.final_dataset = []
         for dataset, inventory_name in tqdm(
             zip(self.datasets, self.datasets_inventory)
         ):
