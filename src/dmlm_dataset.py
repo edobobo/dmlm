@@ -1,4 +1,5 @@
 from collections import Counter, defaultdict
+from functools import lru_cache
 from typing import List, Dict, Any, Optional, Tuple
 
 from tqdm import tqdm
@@ -7,7 +8,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-from transformers import AutoTokenizer
+from transformers import AutoTokenizer, BatchEncoding
 
 from src.utils.nns import batchify
 from src.utils.wsd import WSDInstance, expand_raganato_path, read_from_raganato
@@ -95,6 +96,19 @@ class DMLMDataset(Dataset):
                     count / total_occ
                 )  # inverse doc freq
 
+    def _clean_dataset(self, dataset: List[List[WSDInstance]]) -> List[List[WSDInstance]]:
+        return [snt for snt in dataset if all([wi.annotated_token.text is not None for wi in snt])]
+
+    def _pretokenize_dataset(self, dataset: List[List[WSDInstance]]) -> BatchEncoding:
+        dataset_sentences = [
+            " ".join([wi.annotated_token.text for wi in snt]) for snt in dataset
+        ]
+        return self.tokenizer(dataset_sentences, add_special_tokens=False)
+
+    @lru_cache(maxsize=100_000)
+    def _tokenize_definition(self, definition: str) -> List[int]:
+        return self.tokenizer(definition, add_special_tokens=False).input_ids
+
     def _torch_mask_tokens(
         self,
         inputs: torch.Tensor,
@@ -167,26 +181,31 @@ class DMLMDataset(Dataset):
             return np.random.choice(selectable_instances_idx, p=instances_probs)
 
         def encode_and_apply_masking(
-            snt: List[WSDInstance], instance_idx: int, definition: str
+            snt: List[WSDInstance],
+            instance_idx: int,
+            definition: str,
+            sentence_idx: int,
         ) -> Dict[str, Any]:
-            input_words = " ".join([inst.annotated_token.text for inst in snt])
-            tokenization_output = self.tokenizer(
-                [input_words, definition], add_special_tokens=False
+            final_indices = (
+                # [CLS]
+                [self.tokenizer.cls_token_id]
+                # sentence ids
+                + tokenized_sentences.input_ids[sentence_idx]
+                # [DEFINITION]
+                + [self.tokenizer.convert_tokens_to_ids(self.definition_special_token)]
+                # definition ids
+                + self._tokenize_definition(definition)
+                # [SEP]
+                + [self.tokenizer.sep_token_id]
             )
-            final_indices = [self.tokenizer.cls_token_id]
-            final_indices += tokenization_output.input_ids[0]
-            final_indices += [
-                self.tokenizer.convert_tokens_to_ids(self.definition_special_token)
-            ]
-            final_indices += tokenization_output.input_ids[1]
-            final_indices += [self.tokenizer.sep_token_id]
+
             final_indices = torch.tensor(final_indices, dtype=torch.long)
 
             input_indices = torch.clone(final_indices)
             defined_token_boundaries = [
                 x + 1
-                for x in tokenization_output.word_to_tokens(
-                    instance_idx
+                for x in tokenized_sentences.word_to_tokens(
+                    sentence_idx, instance_idx
                 )  # + 1 for the cls
             ]
             input_indices[
@@ -207,13 +226,18 @@ class DMLMDataset(Dataset):
             zip(self.datasets, self.datasets_inventory)
         ):
             inventory = self.inventories[inventory_name]
-            for sentence in tqdm(dataset, desc=f"Processing samples"):
+            dataset = self._clean_dataset(dataset)
+            tokenized_sentences = self._pretokenize_dataset(dataset)
+            for i, sentence in tqdm(enumerate(dataset), desc=f"Processing samples"):
                 chosen_instance = pick_instance(sentence)
                 if chosen_instance < 0:
                     continue
                 instance_definition = inventory[sentence[chosen_instance].labels[0]]
                 encoding_output = encode_and_apply_masking(
-                    sentence, chosen_instance, instance_definition
+                    sentence,
+                    chosen_instance,
+                    instance_definition,
+                    i,
                 )
 
                 if len(encoding_output["input_ids"]) >= self.tokenizer.model_max_length:

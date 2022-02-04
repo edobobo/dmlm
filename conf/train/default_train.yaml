@@ -10,7 +10,7 @@ pl_trainer:
   gpus: 1
   accumulate_grad_batches: 4
   gradient_clip_val: 10.0
-  val_check_interval: 100
+  val_check_interval: 1.0
   max_steps: 1_000_000
   precision: 16
 

@@ -6,6 +6,12 @@ inventories:
   oxford:
     _target_: src.dmlm_dataset.SenseInventory
     inventory_path: data/inventories/oxf.tsv
+  wiktionary:
+    _target_: src.dmlm_dataset.SenseInventory
+    inventory_path: data/inventories/wikt.tsv
+  wordnet:
+    _target_: src.dmlm_dataset.SenseInventory
+    inventory_path: data/inventories/wn.tsv
 
 train_batch_size: 16
 train_dataset:
@@ -23,7 +29,7 @@ validation_dataset:
   _target_: src.dmlm_dataset.DMLMDataset
   inventory2datasets:
     oxford:
-      -
+      - data/datasets/oxford/oxf.0.validation
   transformer_model: ${model.transformer_model}
   defined_special_token: ${data.defined_special_token}
   definition_special_token: ${data.definition_special_token}
