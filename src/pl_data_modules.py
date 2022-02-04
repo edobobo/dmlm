@@ -25,6 +25,7 @@ class DMLMPLDataModule(pl.LightningDataModule):
             batch_size=self.conf.data.train_batch_size,
             collate_fn=lambda x: self.train_dataset.collate_function(x),
             shuffle=True,
+            num_workers=self.conf.data.num_workers,
         )
 
     def val_dataloader(self, *args, **kwargs) -> Union[DataLoader, List[DataLoader]]:
@@ -33,6 +34,7 @@ class DMLMPLDataModule(pl.LightningDataModule):
             batch_size=self.conf.data.validation_batch_size,
             collate_fn=lambda x: self.validation_dataset.collate_function(x),
             shuffle=True,
+            num_workers=self.conf.data.num_workers,
         )
 
     def test_dataloader(self, *args, **kwargs) -> Union[DataLoader, List[DataLoader]]:
