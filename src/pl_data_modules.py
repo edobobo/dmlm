@@ -11,7 +11,11 @@ class DMLMPLDataModule(pl.LightningDataModule):
     def __init__(self, conf: DictConfig):
         super().__init__()
         self.conf = conf
-        self.inventories = hydra.utils.instantiate(self.conf.data.inventories)
+        self.inventories = (
+            hydra.utils.instantiate(self.conf.data.inventories)
+            if "inventories" in self.conf.data
+            else None
+        )
         self.train_dataset = hydra.utils.instantiate(
             self.conf.data.train_dataset, inventories=self.inventories
         )

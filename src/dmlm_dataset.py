@@ -14,6 +14,8 @@ from transformers import AutoTokenizer, BatchEncoding
 from src.utils.nns import batchify
 from src.utils.wsd import WSDInstance, expand_raganato_path, read_from_raganato
 
+import logging
+
 
 class SenseInventory:
     def __init__(self, inventory_path: str):
@@ -123,6 +125,9 @@ class BaseMLMDataset(MLMDataset):
         **kwargs,
     ):
         super().__init__(transformer_model, mlm_probability)
+
+        self.logger = logging.getLogger(BaseMLMDataset.__name__)
+
         self.dataset_store: List[str] = []
 
         self.final_dataset: List[Dict[str, Any]] = []
@@ -137,7 +142,9 @@ class BaseMLMDataset(MLMDataset):
         return len(self.final_dataset)
 
     def _load_data(self, datasets_path: List[str], limit: Optional[int] = None) -> None:
+        self.logger.info("Loading datasets from raganato files...")
         for data_path in datasets_path:
+            self.logger.info(f"Loading from: {data_path}")
             raganato_dataset = read_from_raganato(data_path)
             for _, _, wsd_sentence in raganato_dataset:
                 if any(wi.annotated_token.text is None for wi in wsd_sentence):
@@ -149,9 +156,10 @@ class BaseMLMDataset(MLMDataset):
                     break
 
     def init_final_dataset(self) -> None:
+        self.logger.info("Initializing final dataset")
         self.final_dataset = []
         tokenized_sentences = self.tokenizer(self.dataset_store)
-        for sentence_idx in range(len(self.dataset_store)):
+        for sentence_idx in tqdm(range(len(self.dataset_store))):
             input_ids = torch.tensor(
                 tokenized_sentences.input_ids[sentence_idx], dtype=torch.long
             )
@@ -165,7 +173,7 @@ class BaseMLMDataset(MLMDataset):
                     "labels": labels,
                 }
             )
-        print("Total instances in the dataset: ", len(self.final_dataset))
+        self.logger.info(f"Total instances in the dataset: {len(self.final_dataset)}")
 
 
 class DMLMDataset(MLMDataset):
@@ -183,6 +191,9 @@ class DMLMDataset(MLMDataset):
             mlm_probability,
             additional_special_tokens=[defined_special_token, definition_special_token],
         )
+
+        self.logger = logging.getLogger(DMLMDataset.__name__)
+
         self.datasets: List[List[List[WSDInstance]]] = []
         self.datasets_inventory: List[str] = []
         self.inventories: Dict[str, SenseInventory] = inventories
@@ -204,14 +215,15 @@ class DMLMDataset(MLMDataset):
         def load_dataset(dst_path: str) -> List[List[WSDInstance]]:
             return [x[-1] for x in read_from_raganato(*expand_raganato_path(dst_path))]
 
-        print("Initializing datasets...")
+        self.logger.info("Initializing datasets...")
         for inventory_name, inventory_datasets in inventory2datasets.items():
             for dataset_path in inventory_datasets:
+                self.logger.info(f"Loading from: {dataset_path}")
                 self.datasets.append(load_dataset(dataset_path))
                 self.datasets_inventory.append(inventory_name)
 
     def _init_sense_inverse_frequencies(self) -> None:
-        print("Computing senses inverse frequencies")
+        self.logger.info("Computing senses inverse frequencies")
         inventory2sense_count: Dict[str, Counter] = defaultdict(Counter)
 
         def update_inventory_sense_count(
@@ -365,7 +377,7 @@ class DMLMDataset(MLMDataset):
                 "sense": snt[instance_idx].labels[0],
             }
 
-        print("Materializing final dataset...")
+        self.logger.info("Materializing final dataset...")
         self.final_dataset = []
         for dataset, inventory_name in tqdm(
             zip(self.datasets, self.datasets_inventory)
@@ -390,7 +402,7 @@ class DMLMDataset(MLMDataset):
 
                 self.final_dataset.append(encoding_output)
 
-        print("Total instances in the dataset: ", len(self.final_dataset))
+        self.logger.info(f"Total instances in the dataset: {len(self.final_dataset)}")
 
     def collate_function(self, samples: List[Dict[str, Any]]) -> Dict[str, Any]:
         return dict(

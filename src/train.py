@@ -12,6 +12,9 @@ from src.pl_data_modules import DMLMPLDataModule
 
 def train(conf: omegaconf.DictConfig) -> None:
 
+    # environment variables
+    os.environ["TOKENIZERS_PARALLELISM"] = "true"
+
     # reproducibility
     pl.seed_everything(conf.train.seed)
 

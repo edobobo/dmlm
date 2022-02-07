@@ -1,0 +1,29 @@
+defined_special_token: "[DEF]"
+definition_special_token: "[DEFINITION]"
+mlm_probability: 0.15
+
+train_batch_size: 16
+train_dataset:
+  _target_: src.dmlm_dataset.BaseMLMDataset
+  transformer_model: ${model.transformer_model}
+  mlm_probability: ${data.mlm_probability}
+  datasets_path:
+    - data/datasets/oxford/oxf.10.data.xml
+    - data/datasets/oxford/oxf.30.data.xml
+    - data/datasets/oxford/oxf.50.data.xml
+    - data/datasets/wiktionary/wikt.10.data.xml
+    - data/datasets/wiktionary/wikt.30.data.xml
+    - data/datasets/wiktionary/wikt.50.data.xml
+    - data/datasets/wordnet/wn.10.data.xml
+    - data/datasets/wordnet/wn.30.data.xml
+    - data/datasets/wordnet/wn.50.data.xml
+
+validation_batch_size: 16
+validation_dataset:
+  - _target_: src.dmlm_dataset.BaseMLMDataset
+    datasets_path: [data/datasets/oxford/oxf.0.validation.data.xml]
+    transformer_model: ${model.transformer_model}
+    mlm_probability: ${data.mlm_probability}
+    limit: 1000
+
+num_workers: 0
