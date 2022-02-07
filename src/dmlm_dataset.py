@@ -152,7 +152,7 @@ class BaseMLMDataset(MLMDataset):
                 self.dataset_store.append(
                     " ".join([wi.annotated_token.text for wi in wsd_sentence])
                 )
-                if limit is not None and len(self.final_dataset) == limit:
+                if limit is not None and len(self.dataset_store) == limit:
                     break
 
     def init_final_dataset(self) -> None:
