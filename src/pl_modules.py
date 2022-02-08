@@ -64,9 +64,3 @@ class BERTDMLM(pl.LightningModule):
 
     def configure_optimizers(self):
         return hydra.utils.instantiate(self.optim_conf, params=self.parameters())
-
-    def set_train_dataset(self, train_dataset: DMLMDataset):
-        self.train_dataset = train_dataset
-
-    def on_validation_epoch_end(self) -> None:
-        self.train_dataset.init_final_dataset()

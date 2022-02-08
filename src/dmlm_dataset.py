@@ -185,12 +185,15 @@ class DMLMDataset(MLMDataset):
         defined_special_token: str,
         definition_special_token: str,
         mlm_probability: float,
+        plain_mlm_probability: float = 0.0,
     ):
         super().__init__(
             transformer_model,
             mlm_probability,
             additional_special_tokens=[defined_special_token, definition_special_token],
         )
+
+        self.plain_mlm_probability = plain_mlm_probability
 
         self.logger = logging.getLogger(DMLMDataset.__name__)
 
@@ -338,35 +341,52 @@ class DMLMDataset(MLMDataset):
 
         def encode_and_apply_masking(
             snt: List[WSDInstance],
-            instance_idx: int,
-            definition: str,
-            sentence_idx: int,
+            instance_idx: Optional[int] = None,
+            definition: Optional[str] = None,
+            sentence_idx: Optional[int] = None,
         ) -> Dict[str, Any]:
-            final_indices = (
-                # [CLS]
-                [self.tokenizer.cls_token_id]
-                # sentence ids
-                + tokenized_sentences.input_ids[sentence_idx]
-                # [DEFINITION]
-                + [self.tokenizer.convert_tokens_to_ids(self.definition_special_token)]
-                # definition ids
-                + self._tokenize_definition(definition)
-                # [SEP]
-                + [self.tokenizer.sep_token_id]
-            )
+            if instance_idx is not None:
+                final_indices = (
+                    # [CLS]
+                    [self.tokenizer.cls_token_id]
+                    # sentence ids
+                    + tokenized_sentences.input_ids[sentence_idx]
+                    # [DEFINITION]
+                    + [
+                        self.tokenizer.convert_tokens_to_ids(
+                            self.definition_special_token
+                        )
+                    ]
+                    # definition ids
+                    + self._tokenize_definition(definition)
+                    # [SEP]
+                    + [self.tokenizer.sep_token_id]
+                )
 
-            final_indices = torch.tensor(final_indices, dtype=torch.long)
+                final_indices = torch.tensor(final_indices, dtype=torch.long)
 
-            input_indices = torch.clone(final_indices)
-            defined_token_boundaries = [
-                x + 1
-                for x in tokenized_sentences.word_to_tokens(
-                    sentence_idx, instance_idx
-                )  # + 1 for the cls
-            ]
-            input_indices[
-                defined_token_boundaries[0] : defined_token_boundaries[1]
-            ] = self.tokenizer.convert_tokens_to_ids(self.defined_special_token)
+                input_indices = torch.clone(final_indices)
+                defined_token_boundaries = [
+                    x + 1
+                    for x in tokenized_sentences.word_to_tokens(
+                        sentence_idx, instance_idx
+                    )  # + 1 for the cls
+                ]
+                input_indices[
+                    defined_token_boundaries[0] : defined_token_boundaries[1]
+                ] = self.tokenizer.convert_tokens_to_ids(self.defined_special_token)
+
+            else:
+                input_indices = (
+                    # [CLS]
+                    [self.tokenizer.cls_token_id]
+                    # sentence ids
+                    + tokenized_sentences.input_ids[sentence_idx]
+                    # [SEP]
+                    + [self.tokenizer.sep_token_id]
+                )
+                input_indices = torch.tensor(input_indices, dtype=torch.long)
+                final_indices = input_indices.clone()
 
             inputs, labels = self._torch_mask_tokens(input_indices, final_indices)
 
@@ -374,7 +394,9 @@ class DMLMDataset(MLMDataset):
                 "input_ids": inputs,
                 "attention_mask": torch.ones_like(inputs),
                 "labels": labels,
-                "sense": snt[instance_idx].labels[0],
+                "sense": snt[instance_idx].labels[0]
+                if instance_idx is not None
+                else None,
             }
 
         self.logger.info("Materializing final dataset...")
@@ -385,17 +407,30 @@ class DMLMDataset(MLMDataset):
             inventory = self.inventories[inventory_name]
             dataset = self._clean_dataset(dataset)
             tokenized_sentences = self._pretokenize_dataset(dataset)
-            for i, sentence in tqdm(enumerate(dataset), desc=f"Processing samples"):
-                chosen_instance = pick_instance(sentence)
-                if chosen_instance < 0:
-                    continue
-                instance_definition = inventory[sentence[chosen_instance].labels[0]]
-                encoding_output = encode_and_apply_masking(
-                    sentence,
-                    chosen_instance,
-                    instance_definition,
-                    i,
-                )
+
+            if self.plain_mlm_probability > 0:
+                is_plain_mlm = torch.bernoulli(
+                    torch.full((len(dataset),), self.plain_mlm_probability)
+                ).bool()
+            else:
+                is_plain_mlm = [False] * len(dataset)
+
+            for i, (sentence, plain_mlm) in tqdm(
+                enumerate(zip(dataset, is_plain_mlm)), desc=f"Processing samples"
+            ):
+                if plain_mlm:
+                    encoding_output = encode_and_apply_masking(sentence, sentence_idx=i)
+                else:
+                    chosen_instance = pick_instance(sentence)
+                    if chosen_instance < 0:
+                        continue
+                    instance_definition = inventory[sentence[chosen_instance].labels[0]]
+                    encoding_output = encode_and_apply_masking(
+                        sentence,
+                        chosen_instance,
+                        instance_definition,
+                        sentence_idx=i,
+                    )
 
                 if len(encoding_output["input_ids"]) >= self.tokenizer.model_max_length:
                     continue
