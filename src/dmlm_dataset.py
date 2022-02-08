@@ -281,10 +281,15 @@ class DMLMDataset(MLMDataset):
         # We sample a few tokens in each sequence for MLM training (with probability `self.mlm_probability`)
         probability_matrix = torch.full(labels.shape, self.mlm_probability)
         if special_tokens_mask is None:
-            special_tokens_mask = self.tokenizer.get_special_tokens_mask(
-                inputs, already_has_special_tokens=True
+            special_tokens_mask = torch.tensor(
+                [
+                    self.tokenizer.get_special_tokens_mask(
+                        _input, already_has_special_tokens=True
+                    )
+                    for _input in inputs
+                ],
+                dtype=torch.bool,
             )
-            special_tokens_mask = torch.tensor(special_tokens_mask, dtype=torch.bool)
         else:
             special_tokens_mask = special_tokens_mask.bool()
 
@@ -337,6 +342,7 @@ class DMLMDataset(MLMDataset):
             instances_probs = instances_inverse_frequency / np.sum(
                 instances_inverse_frequency
             )
+
             return np.random.choice(selectable_instances_idx, p=instances_probs)
 
         def encode_and_apply_masking(
@@ -388,12 +394,12 @@ class DMLMDataset(MLMDataset):
                 input_indices = torch.tensor(input_indices, dtype=torch.long)
                 final_indices = input_indices.clone()
 
-            inputs, labels = self._torch_mask_tokens(input_indices, final_indices)
+            # inputs, labels = self._torch_mask_tokens(input_indices, final_indices)
 
             return {
-                "input_ids": inputs,
-                "attention_mask": torch.ones_like(inputs),
-                "labels": labels,
+                "input_indices": input_indices,
+                # "attention_mask": torch.ones_like(inputs),
+                "final_indices": final_indices,
                 "sense": snt[instance_idx].labels[0]
                 if instance_idx is not None
                 else None,
@@ -432,7 +438,10 @@ class DMLMDataset(MLMDataset):
                         sentence_idx=i,
                     )
 
-                if len(encoding_output["input_ids"]) >= self.tokenizer.model_max_length:
+                if (
+                    len(encoding_output["input_indices"])
+                    >= self.tokenizer.model_max_length
+                ):
                     continue
 
                 self.final_dataset.append(encoding_output)
@@ -440,19 +449,29 @@ class DMLMDataset(MLMDataset):
         self.logger.info(f"Total instances in the dataset: {len(self.final_dataset)}")
 
     def collate_function(self, samples: List[Dict[str, Any]]) -> Dict[str, Any]:
+
+        input_indices = batchify(
+            [sample["input_indices"] for sample in samples],
+            padding_value=self.tokenizer.pad_token_id,
+        )
+
+        attention_mask = batchify(
+            [torch.ones_like(sample["input_indices"]) for sample in samples],
+            padding_value=0,
+        )
+
+        final_indices = batchify(
+            [sample["final_indices"] for sample in samples],
+            padding_value=self.tokenizer.pad_token_id,
+        )
+
+        input_ids, labels = self._torch_mask_tokens(input_indices, final_indices)
+        labels[labels == self.tokenizer.pad_token_id] = -100
+
         return dict(
-            input_ids=batchify(
-                [sample["input_ids"] for sample in samples],
-                padding_value=self.tokenizer.pad_token_id,
-            ),
-            attention_mask=batchify(
-                [sample["attention_mask"] for sample in samples],
-                padding_value=0,
-            ),
-            labels=batchify(
-                [sample["labels"] for sample in samples],
-                padding_value=-100,
-            ),
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            labels=labels,
         )
 
     def __len__(self) -> int:

@@ -14,7 +14,7 @@ pl_trainer:
   max_steps: 1_000_000
   precision: 16
   num_sanity_val_steps: 0
-  reload_dataloaders_every_epoch: true
+  reload_dataloaders_every_n_epochs: 1
 
 monitor_metric: val_loss/dataloader_idx_0
 
