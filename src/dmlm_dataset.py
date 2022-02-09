@@ -394,11 +394,8 @@ class DMLMDataset(MLMDataset):
                 input_indices = torch.tensor(input_indices, dtype=torch.long)
                 final_indices = input_indices.clone()
 
-            # inputs, labels = self._torch_mask_tokens(input_indices, final_indices)
-
             return {
                 "input_indices": input_indices,
-                # "attention_mask": torch.ones_like(inputs),
                 "final_indices": final_indices,
                 "sense": snt[instance_idx].labels[0]
                 if instance_idx is not None
