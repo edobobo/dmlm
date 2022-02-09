@@ -6,8 +6,6 @@ from transformers import BertForMaskedLM, AutoConfig
 import pytorch_lightning as pl
 import torch
 
-from src.dmlm_dataset import DMLMDataset
-
 
 class BERTDMLM(pl.LightningModule):
     def __init__(
