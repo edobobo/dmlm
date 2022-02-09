@@ -42,16 +42,18 @@ class DMLMPLDataModule(pl.LightningDataModule):
         else:
             for val_dataset in self.validation_dataset:
                 val_dataset.init_final_dataset()
-        return [
+
+        validation_dataloaders = [
             DataLoader(
-                dataset=val_dataset,
+                dataset=vd,
                 batch_size=self.conf.data.validation_batch_size,
-                collate_fn=lambda x: val_dataset.collate_function(x),
+                collate_fn=vd.collate_function,
                 shuffle=False,
                 num_workers=self.conf.data.num_workers,
             )
-            for val_dataset in self.validation_dataset
+            for vd in self.validation_dataset
         ]
+        return validation_dataloaders
 
     def test_dataloader(self, *args, **kwargs) -> Union[DataLoader, List[DataLoader]]:
         raise NotImplementedError
