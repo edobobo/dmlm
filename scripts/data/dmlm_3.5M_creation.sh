@@ -76,4 +76,4 @@ PYTHONPATH=. python src/scripts/convert_raganato_to_jsonl.py \
     wordnet \
     wordnet \
     wordnet \
-  --output-path data/processed_datasets/trial.jsonl
+  --output-path data/processed_datasets/dataset-3.5M.jsonl
