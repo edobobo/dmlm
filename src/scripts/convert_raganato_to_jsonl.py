@@ -13,7 +13,7 @@ def convert_raganato_to_jsonl(
     with open(output_path, "w") as f:
 
         for dataset_id, raganato_path in tqdm(
-            zip(identifiers, raganato_paths), desc="Iterating over datasets"
+            zip(identifiers, raganato_paths), desc="Iterating over datasets", total=len(raganato_paths)
         ):
 
             for _, _, wsd_sentence in tqdm(
