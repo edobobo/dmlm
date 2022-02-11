@@ -782,6 +782,9 @@ class EfficientDMLMDataset(MLMDataset):
             labels=labels,
             )
 
+    def init_final_dataset(self) -> None:
+        return
+
 
 def main():
 
