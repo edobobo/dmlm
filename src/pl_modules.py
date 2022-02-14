@@ -48,14 +48,14 @@ class BERTDMLM(pl.LightningModule):
 
     def training_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
         forward_output = self.forward(**batch)
-        self.log("loss", forward_output["loss"])
+        self.log("loss", forward_output["loss"], rank_zero_only=True)
         return forward_output["loss"]
 
     def validation_step(
         self, batch: dict, batch_idx: int, dataloader_idx: Optional[int] = None
     ) -> None:
         forward_output = self.forward(**batch)
-        self.log("val_loss", forward_output["loss"])
+        self.log("val_loss", forward_output["loss"], rank_zero_only=True)
 
     def test_step(self, batch: dict, batch_idx: int) -> Any:
         raise NotImplementedError
