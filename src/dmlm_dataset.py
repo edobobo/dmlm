@@ -704,8 +704,7 @@ class EfficientDMLMDataset(MLMDataset):
 
             input_indices = torch.clone(final_indices)
             defined_token_boundaries = [
-                x + 1
-                for x in sample["word2tokens"][instance_idx]
+                x + 1 for x in sample["word2tokens"][instance_idx]
             ]
             input_indices[
                 defined_token_boundaries[0] : defined_token_boundaries[1]
@@ -747,8 +746,14 @@ class EfficientDMLMDataset(MLMDataset):
                 if chosen_instance < 0:
                     continue
 
-                instance_definition = self.inventories[sample["dataset_id"]][sample["labels"][chosen_instance]]
-                encoding_output = self.encode_and_apply_masking(sample, chosen_instance, instance_definition)
+                instance_definition = self.inventories[sample["dataset_id"]][
+                    sample["labels"][chosen_instance]
+                ]
+                encoding_output = self.encode_and_apply_masking(
+                    sample, chosen_instance, instance_definition
+                )
+
+                encoding_output["sense"] = sample["labels"][chosen_instance]
 
             processed_samples.append(encoding_output)
 
@@ -773,6 +778,8 @@ class EfficientDMLMDataset(MLMDataset):
             padding_value=self.tokenizer.pad_token_id,
         )
 
+        senses = [ps.get("sense", None) for ps in processed_samples]
+
         input_ids, labels = self._torch_mask_tokens(input_indices, final_indices)
         labels[labels == self.tokenizer.pad_token_id] = -100
 
@@ -780,7 +787,8 @@ class EfficientDMLMDataset(MLMDataset):
             input_ids=input_ids,
             attention_mask=attention_mask,
             labels=labels,
-            )
+            senses=senses,
+        )
 
     def init_final_dataset(self) -> None:
         return
