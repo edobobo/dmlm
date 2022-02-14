@@ -27,12 +27,6 @@ def convert_raganato_to_jsonl(
                     for wi in wsd_sentence
                 ]
 
-                # if len(tokens) < 5 or len(labels) < 5:
-                #     continue
-
-                if "\n" in tokens:
-                    print("ciao")
-
                 if len(tokens) != len(labels):
                     continue
 
