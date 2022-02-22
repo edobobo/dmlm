@@ -2,3 +2,5 @@ pytorch-lightning==1.5.9
 hydra-core==1.1.1
 transformers==4.16.2
 wandb
+datasets
+more_itertools

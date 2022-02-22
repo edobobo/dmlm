@@ -6,6 +6,9 @@ from omegaconf import DictConfig
 from torch.utils.data import DataLoader
 import pytorch_lightning as pl
 
+from src.distributed_sampler import DistributedBatchSampler
+from src.sampler import MaxTokensBatchSampler
+
 
 class DMLMPLDataModule(pl.LightningDataModule):
     def __init__(self, conf: DictConfig):
@@ -25,12 +28,19 @@ class DMLMPLDataModule(pl.LightningDataModule):
             )
         else:
             self.train_dataset.init_final_dataset()
+
+        lengths = self.train_dataset["length"]
+        sampler = MaxTokensBatchSampler(lengths, self.conf.data.train_max_tokens)
+
+        if self.conf.train.pl_trainer.gpus > 1:
+            sampler = DistributedBatchSampler(sampler)
+
         return DataLoader(
-            dataset=self.train_dataset,
-            batch_size=self.conf.data.train_batch_size,
-            collate_fn=lambda x: self.train_dataset.collate_function(x),
-            shuffle=True,
+            self.train_dataset,
+            batch_sampler=sampler,
             num_workers=self.conf.data.num_workers,
+            collate_fn=self.train_dataset.collate_function,
+            pin_memory=self.conf.data.get("pin_memory", False),
         )
 
     def val_dataloader(self, *args, **kwargs) -> Union[DataLoader, List[DataLoader]]:

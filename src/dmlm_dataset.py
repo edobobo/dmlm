@@ -531,10 +531,12 @@ class EfficientDMLMDataset(MLMDataset):
 
         self.dataset_store = None
         self.sense_inverse_frequencies = None
+        self.lengths = None
 
         self._load_dataset()
         self._clean_dataset()
         self._tokenize_dataset()
+        self._compute_lengths()
         self._load_sense_inverse_frequencies()
 
     def _load_dataset(self):
@@ -576,6 +578,12 @@ class EfficientDMLMDataset(MLMDataset):
         )
 
         self.dataset_store = self.dataset_store.map(offsets_to_word2tokens)
+
+    def _compute_lengths(self):
+        self.dataset_store = self.dataset_store.map(
+            lambda example: dict(length=len(example["input_ids"]))
+        )
+        self.lengths = self.dataset_store["length"]
 
     def _load_sense_inverse_frequencies(self):
         self.logger.info("Computing senses inverse frequencies")
