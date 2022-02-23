@@ -1,7 +1,7 @@
 import math
 from abc import ABC
 
-from typing import Iterator, Sized, Sequence, List
+from typing import Iterator, Sized, Sequence, List, Optional
 
 import numpy as np
 
@@ -54,9 +54,10 @@ class PadReducerBatchSampler(NoisedBatchSampler):
 
 
 class MaxTokensBatchSampler(NoisedBatchSampler):
-    def __init__(self, data_source: Sized, max_tokens: int, noise_value: float = 0.05):
+    def __init__(self, data_source: Sized, max_tokens: int, max_batch_size: Optional[int] = None, noise_value: float = 0.05):
         super().__init__(data_source, noise_value)
         self.max_tokens = max_tokens
+        self.max_batch_size = max_batch_size
         self.batch_indicators = self._get_batches()
 
     def _lazy_groups_of_max_size(self):
@@ -76,7 +77,7 @@ class MaxTokensBatchSampler(NoisedBatchSampler):
             #     )
             group_size = max(size, cur_max_size) * (len(group) + 1)
 
-            if group_size > max_size:
+            if group_size > max_size or (self.max_batch_size is not None and len(group) >= self.max_batch_size):
                 yield starting_index, len(group)
                 cur_max_size = 0
                 group = []

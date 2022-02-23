@@ -14,6 +14,7 @@ inventories:
     inventory_path: data/inventories/wn.tsv
 
 train_max_tokens: 8192
+max_batch_size: 64
 train_batch_size: 16
 train_dataset:
   _target_: src.dmlm_dataset.EfficientDMLMDataset
