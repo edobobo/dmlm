@@ -7,6 +7,8 @@ import numpy as np
 
 from torch.utils.data import Sampler
 
+from src.utils.commons import chunks, flatten
+
 
 class NoisedBatchSampler(Sampler[Sequence[int]], ABC):
     def __init__(self, data_source: Sized, noise_value: float):
@@ -26,7 +28,10 @@ class NoisedBatchSampler(Sampler[Sequence[int]], ABC):
 
     @classmethod
     def noisy_argsort(cls, array: np.ndarray, noise_value: float = 0.05) -> np.ndarray:
-        return cls.noised(array, noise_value).argsort()
+        sorted_indices = cls.noised(array, noise_value).argsort()
+        sorted_chunks = list(chunks(sorted_indices, 4096))
+        np.random.shuffle(sorted_chunks)
+        return np.array(flatten(sorted_chunks))
 
 
 class PadReducerBatchSampler(NoisedBatchSampler):
