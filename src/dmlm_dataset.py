@@ -761,8 +761,8 @@ class EfficientDMLMDataset(MLMDataset):
 
         else:
             input_ids = sample["input_ids"]
-            if input_ids > self.tokenizer.model_max_length - 2:
-                input_ids = input_ids[:(self.tokenizer.model_max_length - 2)]
+            if len(input_ids) > self.tokenizer.model_max_length - 2:
+                input_ids = input_ids[: (self.tokenizer.model_max_length - 2)]
             input_indices = (
                 # [CLS]
                 [self.tokenizer.cls_token_id]

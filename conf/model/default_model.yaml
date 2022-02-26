@@ -1,7 +1,7 @@
 _target_: src.pl_modules.BERTDMLM
 transformer_model: bert-base-cased
-num_layers: 6
-hidden_size: 512
+num_layers: 3
+hidden_size: 256
 num_heads: 8
 additional_special_tokens: 2
 optim_conf:

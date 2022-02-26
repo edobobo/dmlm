@@ -6,29 +6,17 @@ inventories:
   oxford:
     _target_: src.dmlm_dataset.SenseInventory
     inventory_path: data/inventories/oxf.tsv
-  wiktionary:
-    _target_: src.dmlm_dataset.SenseInventory
-    inventory_path: data/inventories/wikt.tsv
-  wordnet:
-    _target_: src.dmlm_dataset.SenseInventory
-    inventory_path: data/inventories/wn.tsv
+#  wiktionary:
+#    _target_: src.dmlm_dataset.SenseInventory
+#    inventory_path: data/inventories/wikt.tsv
+#  wordnet:
+#    _target_: src.dmlm_dataset.SenseInventory
+#    inventory_path: data/inventories/wn.tsv
 
 train_batch_size: 16
 train_dataset:
-  _target_: src.dmlm_dataset.DMLMDataset
-  inventory2datasets:
-    oxford:
-      - data/datasets/oxford/oxf.10
-      - data/datasets/oxford/oxf.30
-      - data/datasets/oxford/oxf.50
-    wiktionary:
-      - data/datasets/wiktionary/wikt.10
-      - data/datasets/wiktionary/wikt.30
-      - data/datasets/wiktionary/wikt.50
-    wordnet:
-      - data/datasets/wordnet/wn.10
-      - data/datasets/wordnet/wn.30
-      - data/datasets/wordnet/wn.50
+  _target_: src.dmlm_dataset.EfficientDMLMDataset
+  dataset_path: data/processed_datasets/oxf_10.jsonl
   transformer_model: ${model.transformer_model}
   defined_special_token: ${data.defined_special_token}
   definition_special_token: ${data.definition_special_token}
@@ -51,4 +39,4 @@ validation_dataset:
     mlm_probability: ${data.mlm_probability}
     limit: 1000
 
-num_workers: 16
+num_workers: 6
