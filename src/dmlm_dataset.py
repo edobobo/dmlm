@@ -513,6 +513,7 @@ class EfficientDMLMDataset(MLMDataset):
         definition_special_token: str,
         mlm_probability: float,
         plain_mlm_probability: float = 0.0,
+        preprocessed_dataset: bool = False,
     ):
         super().__init__(
             transformer_model,
@@ -533,10 +534,15 @@ class EfficientDMLMDataset(MLMDataset):
         self.sense_inverse_frequencies = None
         self.lengths = None
 
-        self._load_dataset()
-        self._clean_dataset()
-        self._tokenize_dataset()
-        self._compute_lengths()
+        if not preprocessed_dataset:
+            self._load_dataset()
+            self._clean_dataset()
+            self._tokenize_dataset()
+            self._compute_lengths()
+        else:
+            self.dataset_store = datasets.load_from_disk(dataset_path)
+            self.lengths = self.dataset_store["length"]
+
         self._load_sense_inverse_frequencies()
 
     def _load_dataset(self):
@@ -688,6 +694,35 @@ class EfficientDMLMDataset(MLMDataset):
 
         return np.random.choice(selectable_instances_idx, p=instances_probs)
 
+    def truncate_sequence(
+        self,
+        input_indices: torch.Tensor,
+        final_indices: torch.Tensor,
+        special_tokens_boundaries: Tuple[int, int],
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        if len(input_indices) <= self.tokenizer.model_max_length:
+            return input_indices, final_indices
+
+        exceeding_tokens = len(input_indices) - self.tokenizer.model_max_length
+
+        ex_from_left = exceeding_tokens // 2
+        ex_from_right = exceeding_tokens // 2 + (0 if exceeding_tokens % 2 == 0 else 1)
+
+        taken_from_left = min(special_tokens_boundaries[0], ex_from_left)
+        taken_from_right = min(
+            len(input_indices) - special_tokens_boundaries[1], ex_from_right
+        )
+
+        if taken_from_left < ex_from_left:
+            taken_from_right += ex_from_left - taken_from_left
+        elif taken_from_right < ex_from_right:
+            taken_from_left += ex_from_right - taken_from_right
+
+        return (
+            input_indices[ex_from_left:-ex_from_right],
+            final_indices[ex_from_left:-ex_from_right],
+        )
+
     def encode_and_apply_masking(
         self,
         sample: Dict[str, Any],
@@ -718,12 +753,21 @@ class EfficientDMLMDataset(MLMDataset):
                 defined_token_boundaries[0] : defined_token_boundaries[1]
             ] = self.tokenizer.convert_tokens_to_ids(self.defined_special_token)
 
+            input_indices, final_indices = self.truncate_sequence(
+                input_indices,
+                final_indices,
+                (defined_token_boundaries[0], defined_token_boundaries[1]),
+            )
+
         else:
+            input_ids = sample["input_ids"]
+            if input_ids > self.tokenizer.model_max_length - 2:
+                input_ids = input_ids[:(self.tokenizer.model_max_length - 2)]
             input_indices = (
                 # [CLS]
                 [self.tokenizer.cls_token_id]
                 # sentence ids
-                + sample["input_ids"]
+                + input_ids
                 # [SEP]
                 + [self.tokenizer.sep_token_id]
             )
