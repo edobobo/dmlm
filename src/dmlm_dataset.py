@@ -713,6 +713,13 @@ class EfficientDMLMDataset(MLMDataset):
             len(input_indices) - special_tokens_boundaries[1], ex_from_right
         )
 
+        if taken_from_left < ex_from_left and taken_from_right < ex_from_right:
+            print(
+                "Something very bad happened, the span "
+                "containing the defined token is way too long"
+            )
+            raise NotImplementedError
+
         if taken_from_left < ex_from_left:
             taken_from_right += ex_from_left - taken_from_left
         elif taken_from_right < ex_from_right:
@@ -782,7 +789,9 @@ class EfficientDMLMDataset(MLMDataset):
     def process_samples(self, samples: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         processed_samples = []
 
-        if self.plain_mlm_probability > 0:
+        if self.plain_mlm_probability == 1.0:
+            is_plain_mlm = [True] * len(samples)
+        elif self.plain_mlm_probability > 0:
             is_plain_mlm = torch.bernoulli(
                 torch.full((len(samples),), self.plain_mlm_probability)
             ).bool()
@@ -812,6 +821,9 @@ class EfficientDMLMDataset(MLMDataset):
         return processed_samples
 
     def collate_function(self, samples: List[Dict[str, Any]]) -> Dict[str, Any]:
+
+        if len(samples) == 0:
+            print("Empty samples in input to the collate function")
 
         processed_samples = self.process_samples(samples)
 
