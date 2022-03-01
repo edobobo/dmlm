@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Optional, Iterator, Sequence
 
 import torch.distributed as dist
@@ -11,6 +12,7 @@ class DistributedBatchSampler(Sampler[Sequence[int]]):
         batch_sampler: Sampler[Sequence[int]],
         num_replicas: Optional[int] = None,
         rank: Optional[int] = None,
+        dump_batches: bool = False,
     ):
 
         super().__init__(None)
@@ -35,16 +37,29 @@ class DistributedBatchSampler(Sampler[Sequence[int]]):
         self.sampler = batch_sampler
         self.num_replicas = num_replicas
         self.rank = rank
+        self.dump_batches = dump_batches
+        self.epoch = 0
 
     def __iter__(self) -> Iterator[Sequence[int]]:
         iterator = chunked(self.sampler, self.num_replicas)
+
+        out_dir = Path.cwd() / f'batch_dump/e{self.epoch}'
+        out_dir.mkdir(exist_ok=True, parents=True)
+        fd = (out_dir / f'{self.rank}.log').open('w') if self.dump_batches else None
+
         for replicas_batches in iterator:
             # skips the last batch
             if len(replicas_batches) != self.num_replicas:
                 continue
 
+            if fd is not None:
+                print(replicas_batches, file=fd)
+
             # yields the batch corresponding to this rank
             yield replicas_batches[self.rank]
+
+        if fd is not None:
+            fd.close()
 
     def __len__(self) -> int:
         return len(self.sampler) // self.num_replicas
@@ -52,4 +67,4 @@ class DistributedBatchSampler(Sampler[Sequence[int]]):
     # kept here just because it exists in DistributedSampler
     # and I'd like to avoid crashing at the end of the first epoch :)
     def set_epoch(self, epoch: int) -> None:
-        pass
+        self.epoch = epoch

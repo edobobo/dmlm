@@ -33,7 +33,7 @@ class DMLMPLDataModule(pl.LightningDataModule):
         sampler = MaxTokensBatchSampler(lengths, self.conf.data.train_max_tokens, self.conf.data.max_batch_size)
 
         if self.conf.train.pl_trainer.gpus > 1:
-            sampler = DistributedBatchSampler(sampler)
+            sampler = DistributedBatchSampler(sampler, dump_batches=True)
 
         return DataLoader(
             self.train_dataset,
