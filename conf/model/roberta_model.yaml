@@ -1,5 +1,5 @@
 _target_: src.pl_modules.TransformerDMLM
-transformer_model: bert-base-cased
+transformer_model: roberta-base
 num_layers: 6
 hidden_size: 512
 num_heads: 8

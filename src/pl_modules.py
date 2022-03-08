@@ -1,13 +1,13 @@
 from typing import Any, Optional
 
 import hydra
-from transformers import BertForMaskedLM, AutoConfig
+from transformers import AutoConfig, AutoModelForMaskedLM
 
 import pytorch_lightning as pl
 import torch
 
 
-class BERTDMLM(pl.LightningModule):
+class TransformerDMLM(pl.LightningModule):
     def __init__(
         self,
         transformer_model: str,
@@ -20,17 +20,17 @@ class BERTDMLM(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
-        bert_config = AutoConfig.from_pretrained(
+        config = AutoConfig.from_pretrained(
             transformer_model,
             hidden_size=hidden_size,
             num_hidden_layers=num_layers,
             num_attention_heads=num_heads,
         )
-        self.bert_model = BertForMaskedLM(bert_config)
+        self.model = AutoModelForMaskedLM(config)
 
         if additional_special_tokens is not None and additional_special_tokens > 0:
-            self.bert_model.resize_token_embeddings(
-                bert_config.vocab_size + additional_special_tokens
+            self.model.resize_token_embeddings(
+                config.vocab_size + additional_special_tokens
             )
 
         self.optim_conf = optim_conf
@@ -42,7 +42,7 @@ class BERTDMLM(pl.LightningModule):
         labels: torch.Tensor,
         **kwargs,
     ) -> dict:
-        model_output = self.bert_model(input_ids, attention_mask, labels=labels)
+        model_output = self.model(input_ids, attention_mask, labels=labels)
         output_dict = {"loss": model_output.loss}
         return output_dict
 

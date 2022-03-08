@@ -3,16 +3,16 @@ from typing import Optional
 
 import argparse
 
-from src.pl_modules import BERTDMLM
+from src.pl_modules import TransformerDMLM
 
 
 def extract_transformer(
     model_path: str, output_dir: str, member_variable: Optional[str] = None
 ) -> None:
-    pl_module = BERTDMLM.load_from_checkpoint(model_path)
+    pl_module = TransformerDMLM.load_from_checkpoint(model_path)
 
     if member_variable is None:
-        member_variable = "bert_model"
+        member_variable = "model"
 
     transformer_model = getattr(pl_module, member_variable, None)
 
