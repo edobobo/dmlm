@@ -597,7 +597,14 @@ class EfficientDMLMDataset(MLMDataset):
 
         for sample in self.dataset_store:
             inventory2sense_count[sample["dataset_id"]].update(
-                _l for _l in sample["labels"] if _l is not None
+                _l
+                for _l in sample["labels"]
+                if _l is not None
+                and _l != "Nil"
+                and (
+                    sample["dataset_id"] == "wordnet"
+                    or any(x in _l for x in ["VERB", "ADJ", "NOUN", "ADV"])
+                )
             )
 
         self.sense_inverse_frequencies = dict()
@@ -676,7 +683,9 @@ class EfficientDMLMDataset(MLMDataset):
 
     def pick_instance(self, labels: List[str]) -> int:
         selectable_instances_idx = [
-            idx for idx, _label in enumerate(labels) if _label != "Nil"
+            idx
+            for idx, _label in enumerate(labels)
+            if _label != "Nil" and _label in self.sense_inverse_frequencies
         ]
 
         if len(selectable_instances_idx) == 0:
@@ -688,6 +697,7 @@ class EfficientDMLMDataset(MLMDataset):
                 for inst_idx in selectable_instances_idx
             ]
         )
+
         instances_probs = instances_inverse_frequency / np.sum(
             instances_inverse_frequency
         )
