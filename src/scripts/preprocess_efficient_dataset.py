@@ -5,7 +5,9 @@ import datasets
 from src.dmlm_dataset import EfficientDMLMDataset
 
 
-def preprocess_efficient_dataset(dataset_path: str, transformer_model: str, output_dir: str) -> None:
+def preprocess_efficient_dataset(
+    dataset_path: str, transformer_model: str, output_dir: str
+) -> None:
 
     dataset = EfficientDMLMDataset(
         dataset_path,
@@ -32,7 +34,9 @@ def parse_args() -> argparse.Namespace:
 
 def main():
     args = parse_args()
-    preprocess_efficient_dataset(args.dataset_path, args.transformer_model, args.output_dir)
+    preprocess_efficient_dataset(
+        args.dataset_path, args.transformer_model, args.output_dir
+    )
 
 
 if __name__ == "__main__":
