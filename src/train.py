@@ -27,7 +27,7 @@ def train(conf: omegaconf.DictConfig) -> None:
     # callbacks declaration
     callbacks_store = []
 
-    if conf.train.early_stopping_callback is not None:
+    if conf.train.get("early_stopping_callback", None) is not None:
         early_stopping_callback: EarlyStopping = hydra.utils.instantiate(
             conf.train.early_stopping_callback
         )
