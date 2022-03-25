@@ -35,7 +35,7 @@ class DMLMPLDataModule(pl.LightningDataModule):
         )
 
         if self.conf.train.pl_trainer.gpus > 1:
-            sampler = DistributedBatchSampler(sampler, dump_batches=True)
+            sampler = DistributedBatchSampler(sampler, dump_batches=False)
 
         return DataLoader(
             self.train_dataset,
@@ -43,6 +43,7 @@ class DMLMPLDataModule(pl.LightningDataModule):
             num_workers=self.conf.data.num_workers,
             collate_fn=self.train_dataset.collate_function,
             pin_memory=self.conf.data.get("pin_memory", False),
+            prefetch_factor=4,
         )
 
     def val_dataloader(self, *args, **kwargs) -> Union[DataLoader, List[DataLoader]]:
