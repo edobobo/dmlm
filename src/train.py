@@ -48,7 +48,9 @@ def train(conf: omegaconf.DictConfig) -> None:
         conf.train.pl_trainer,
         callbacks=callbacks_store,
         logger=logger,
-        plugins=DDPPlugin(find_unused_parameters=False),
+        plugins=DDPPlugin(find_unused_parameters=False)
+        if conf.train.training_strategy == "ddp"
+        else None,
     )
 
     # module fit
