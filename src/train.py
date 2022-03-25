@@ -6,6 +6,7 @@ import hydra
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
+from pytorch_lightning.plugins import DDPPlugin
 
 from src.pl_data_modules import DMLMPLDataModule
 
@@ -44,7 +45,10 @@ def train(conf: omegaconf.DictConfig) -> None:
 
     # trainer
     trainer: Trainer = hydra.utils.instantiate(
-        conf.train.pl_trainer, callbacks=callbacks_store, logger=logger
+        conf.train.pl_trainer,
+        callbacks=callbacks_store,
+        logger=logger,
+        plugins=DDPPlugin(find_unused_parameters=False),
     )
 
     # module fit
