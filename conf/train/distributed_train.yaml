@@ -1,0 +1,29 @@
+# reproducibility
+seed: 42
+
+# model name
+model_name: bert-dmlm-6l-512hs-8h-fp16
+
+# pl_trainer
+pl_trainer:
+  _target_: pytorch_lightning.Trainer
+  gpus: 1
+  strategy: "ddp"
+  accumulate_grad_batches: 1
+  gradient_clip_val: 10.0
+  val_check_interval: 1.0
+  max_steps: 4_000_000
+  precision: 16
+  num_sanity_val_steps: 0
+  replace_sampler_ddp: False
+
+monitor_metric: val_loss/dataloader_idx_0
+
+model_checkpoint_callback:
+  _target_: pytorch_lightning.callbacks.ModelCheckpoint
+  monitor: ${train.monitor_metric}
+  mode: min
+  verbose: True
+  save_top_k: 2
+  dirpath: experiments/${train.model_name}
+  save_last: True

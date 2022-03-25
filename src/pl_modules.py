@@ -26,7 +26,8 @@ class TransformerDMLM(pl.LightningModule):
             num_hidden_layers=num_layers,
             num_attention_heads=num_heads,
         )
-        self.model = AutoModelForMaskedLM(config)
+
+        self.model = AutoModelForMaskedLM.from_config(config)
 
         if additional_special_tokens is not None and additional_special_tokens > 0:
             self.model.resize_token_embeddings(
@@ -49,6 +50,9 @@ class TransformerDMLM(pl.LightningModule):
     def training_step(self, batch: dict, batch_idx: int) -> torch.Tensor:
         forward_output = self.forward(**batch)
         self.log("loss", forward_output["loss"], rank_zero_only=True)
+        self.log(
+            "train_batch_size", int(batch["input_ids"].shape[0]), rank_zero_only=True
+        )
         return forward_output["loss"]
 
     def validation_step(
