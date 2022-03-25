@@ -42,7 +42,7 @@ class DMLMPLDataModule(pl.LightningDataModule):
             batch_sampler=sampler,
             num_workers=self.conf.data.num_workers,
             collate_fn=self.train_dataset.collate_function,
-            pin_memory=self.conf.data.get("pin_memory", False),
+            pin_memory=self.conf.data.get("pin_memory", True),
             prefetch_factor=4,
         )
 
