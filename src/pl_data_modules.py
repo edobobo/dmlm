@@ -29,17 +29,20 @@ class DMLMPLDataModule(pl.LightningDataModule):
         else:
             self.train_dataset.init_final_dataset()
 
-        lengths = self.train_dataset["length"]
-        sampler = MaxTokensBatchSampler(
-            lengths, self.conf.data.train_max_tokens, self.conf.data.max_batch_size
-        )
+        batch_sampler = None
+        if self.conf.data.tokens_batching:
+            lengths = self.train_dataset["length"]
+            batch_sampler = MaxTokensBatchSampler(
+                lengths, self.conf.data.train_max_tokens, self.conf.data.max_batch_size
+            )
 
-        if self.conf.train.pl_trainer.gpus > 1:
-            sampler = DistributedBatchSampler(sampler, dump_batches=False)
+            if self.conf.train.pl_trainer.gpus > 1:
+                batch_sampler = DistributedBatchSampler(batch_sampler, dump_batches=False)
 
         return DataLoader(
             self.train_dataset,
-            batch_sampler=sampler,
+            batch_sampler=batch_sampler,
+            batch_size=self.conf.data.train_batch_size,
             num_workers=self.conf.data.num_workers,
             collate_fn=self.train_dataset.collate_function,
             pin_memory=self.conf.data.get("pin_memory", True),
