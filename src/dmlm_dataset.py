@@ -1,6 +1,6 @@
 from collections import Counter, defaultdict
 from functools import lru_cache
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional, Tuple, Union
 
 import datasets
 from datasets import Features
@@ -543,7 +543,8 @@ class EfficientDMLMDataset(MLMDataset):
             self.dataset_store = datasets.load_from_disk(dataset_path)
             self.lengths = self.dataset_store["length"]
 
-        self._load_sense_inverse_frequencies()
+        if self.plain_mlm_probability < 1.0:
+            self._load_sense_inverse_frequencies()
 
     def _load_dataset(self):
         self.logger.info("Loading dataset")
@@ -709,9 +710,9 @@ class EfficientDMLMDataset(MLMDataset):
         input_indices: torch.Tensor,
         final_indices: torch.Tensor,
         special_tokens_boundaries: Tuple[int, int],
-    ) -> Tuple[torch.Tensor, torch.Tensor]:
+    ) -> Tuple[torch.Tensor, torch.Tensor, Tuple[int, int]]:
         if len(input_indices) <= self.tokenizer.model_max_length:
-            return input_indices, final_indices
+            return input_indices, final_indices, special_tokens_boundaries
 
         exceeding_tokens = len(input_indices) - self.tokenizer.model_max_length
 
@@ -738,6 +739,10 @@ class EfficientDMLMDataset(MLMDataset):
         return (
             input_indices[ex_from_left:-ex_from_right],
             final_indices[ex_from_left:-ex_from_right],
+            (
+                special_tokens_boundaries[0] - ex_from_left,
+                special_tokens_boundaries[1] - ex_from_left,
+            ),
         )
 
     def encode_and_apply_masking(
@@ -770,7 +775,11 @@ class EfficientDMLMDataset(MLMDataset):
                 defined_token_boundaries[0] : defined_token_boundaries[1]
             ] = self.tokenizer.convert_tokens_to_ids(self.defined_special_token)
 
-            input_indices, final_indices = self.truncate_sequence(
+            (
+                input_indices,
+                final_indices,
+                defined_token_boundaries,
+            ) = self.truncate_sequence(
                 input_indices,
                 final_indices,
                 (defined_token_boundaries[0], defined_token_boundaries[1]),
@@ -790,10 +799,12 @@ class EfficientDMLMDataset(MLMDataset):
             )
             input_indices = torch.tensor(input_indices, dtype=torch.long)
             final_indices = input_indices.clone()
+            defined_token_boundaries = None
 
         return {
             "input_indices": input_indices,
             "final_indices": final_indices,
+            "defined_token_boundaries": defined_token_boundaries,
         }
 
     def process_samples(self, samples: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -830,7 +841,9 @@ class EfficientDMLMDataset(MLMDataset):
 
         return processed_samples
 
-    def collate_function(self, samples: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def collate_function(
+        self, samples: List[Dict[str, Any]], return_processed_samples: bool = False
+    ) -> Union[Dict[str, Any], Tuple[list, Dict[str, Any]]]:
 
         if len(samples) == 0:
             print("Empty samples in input to the collate function")
@@ -842,10 +855,8 @@ class EfficientDMLMDataset(MLMDataset):
             padding_value=self.tokenizer.pad_token_id,
         )
 
-        attention_mask = batchify(
-            [torch.ones_like(ps["input_indices"]) for ps in processed_samples],
-            padding_value=0,
-        )
+        attention_mask = torch.ones_like(input_indices)
+        attention_mask[input_indices == self.tokenizer.pad_token_id] = 0
 
         final_indices = batchify(
             [ps["final_indices"] for ps in processed_samples],
@@ -857,15 +868,73 @@ class EfficientDMLMDataset(MLMDataset):
         input_ids, labels = self._torch_mask_tokens(input_indices, final_indices)
         labels[labels == self.tokenizer.pad_token_id] = -100
 
-        return dict(
+        output_dict = dict(
             input_ids=input_ids,
             attention_mask=attention_mask,
             labels=labels,
             senses=senses,
         )
 
+        if return_processed_samples:
+            return processed_samples, output_dict
+
+        return output_dict
+
     def init_final_dataset(self) -> None:
         return
+
+
+class EfficientDMLMSeq2SeqDataset(EfficientDMLMDataset):
+    def collate_function(
+        self, samples: List[Dict[str, Any]], return_processed_samples: bool = False
+    ) -> Dict[str, Any]:
+
+        if return_processed_samples:
+            raise NotImplementedError
+
+        processed_samples, output_dict = super(
+            EfficientDMLMSeq2SeqDataset, self
+        ).collate_function(samples, return_processed_samples=True)
+
+        if any(
+            sample["defined_token_boundaries"] is not None
+            and sample["defined_token_boundaries"][1]
+            - sample["defined_token_boundaries"][0]
+            > 1
+            for sample in processed_samples
+        ):
+            new_output_ids = []
+            for i, (input_ids, original_sample) in enumerate(
+                zip(output_dict["input_ids"], processed_samples)
+            ):
+                defined_token_boundaries = original_sample["defined_token_boundaries"]
+                if (
+                    defined_token_boundaries is not None
+                    and defined_token_boundaries[1] - defined_token_boundaries[0] > 1
+                ):
+                    new_output_ids.append(
+                        torch.cat(
+                            [
+                                input_ids[: defined_token_boundaries[0] + 1],
+                                input_ids[defined_token_boundaries[1] :],
+                                input_ids.new_zeros(
+                                    defined_token_boundaries[1]
+                                    - defined_token_boundaries[0]
+                                    - 1
+                                )
+                                * self.tokenizer.pad_token_id,
+                            ]
+                        )
+                    )
+                else:
+                    new_output_ids.append(input_ids)
+
+            output_dict["input_ids"] = batchify(
+                new_output_ids,
+                padding_value=self.tokenizer.pad_token_id,
+            )
+
+        return output_dict
 
 
 def main():
@@ -874,8 +943,8 @@ def main():
         "/home/edobobo/PycharmProjects/dmlm/data/inventories/oxf.tsv"
     )
 
-    dmlm_dataset = EfficientDMLMDataset(
-        "data/processed_datasets/oxf_10.jsonl",
+    dmlm_dataset = EfficientDMLMSeq2SeqDataset(
+        "data/processed_datasets/trial-10k.jsonl",
         {"oxford": oxford_inventory},
         "bert-base-cased",
         "[DEF]",

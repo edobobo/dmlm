@@ -1,0 +1,46 @@
+defined_special_token: "[DEF]"
+definition_special_token: "[DEFINITION]"
+mlm_probability: 0.15
+tokens_batching: False
+
+inventories:
+  oxford:
+    _target_: src.dmlm_dataset.SenseInventory
+    inventory_path: data/inventories/oxf.tsv
+  wiktionary:
+    _target_: src.dmlm_dataset.SenseInventory
+    inventory_path: data/inventories/wikt.tsv
+  wordnet:
+    _target_: src.dmlm_dataset.SenseInventory
+    inventory_path: data/inventories/wn.tsv
+
+train_max_tokens: 8192
+max_batch_size: 64
+train_batch_size: 64
+train_dataset:
+  _target_: src.dmlm_dataset.EfficientDMLMDataset
+  dataset_path: data/preprocessed_datasets/wiki1M
+  transformer_model: ${model.tokenizer_model}
+  defined_special_token: ${data.defined_special_token}
+  definition_special_token: ${data.definition_special_token}
+  mlm_probability: ${data.mlm_probability}
+  plain_mlm_probability: 0.5
+  preprocessed_dataset: True
+
+validation_batch_size: 16
+validation_dataset:
+  - _target_: src.dmlm_dataset.DMLMDataset
+    inventory2datasets:
+      oxford:
+        - data/datasets/oxford/oxf.0.validation
+    transformer_model: ${model.tokenizer_model}
+    defined_special_token: ${data.defined_special_token}
+    definition_special_token: ${data.definition_special_token}
+    mlm_probability: ${data.mlm_probability}
+  - _target_: src.dmlm_dataset.BaseMLMDataset
+    datasets_path: [data/datasets/oxford/oxf.0.validation.data.xml]
+    transformer_model: ${model.tokenizer_model}
+    mlm_probability: ${data.mlm_probability}
+    limit: 1000
+
+num_workers: 20

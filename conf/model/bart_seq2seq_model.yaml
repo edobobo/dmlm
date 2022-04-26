@@ -1,0 +1,17 @@
+_target_: src.pl_modules.Seq2SeqDMLM
+tokenizer_model: bert-base-cased
+transformer_model: facebook/bart-base
+architecture_conf:
+  d_model: 512
+  encoder_layers: 6
+  encoder_attention_heads: 8
+  decoder_layers: 2
+  decoder_attention_heads: 8
+
+additional_special_tokens: 2
+
+optim_conf:
+  _target_: src.utils.optimizers.RAdam
+  lr: 1e-5
+  weight_decay: 0.01
+_recursive_: False

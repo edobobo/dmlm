@@ -46,7 +46,6 @@ class DMLMPLDataModule(pl.LightningDataModule):
             num_workers=self.conf.data.num_workers,
             collate_fn=self.train_dataset.collate_function,
             pin_memory=self.conf.data.get("pin_memory", True),
-            prefetch_factor=4,
         )
 
     def val_dataloader(self, *args, **kwargs) -> Union[DataLoader, List[DataLoader]]:

@@ -45,12 +45,7 @@ def train(conf: omegaconf.DictConfig) -> None:
 
     # trainer
     trainer: Trainer = hydra.utils.instantiate(
-        conf.train.pl_trainer,
-        callbacks=callbacks_store,
-        logger=logger,
-        plugins=DDPPlugin(find_unused_parameters=False)
-        if conf.train.training_strategy == "ddp"
-        else None,
+        conf.train.pl_trainer, callbacks=callbacks_store, logger=logger, strategy="ddp"
     )
 
     # module fit
