@@ -934,6 +934,10 @@ class EfficientDMLMSeq2SeqDataset(EfficientDMLMDataset):
                 padding_value=self.tokenizer.pad_token_id,
             )
 
+            attention_mask = torch.ones_like(output_dict["input_ids"])
+            attention_mask[output_dict["input_ids"] == self.tokenizer.pad_token_id] = 0
+            output_dict["attention_mask"] = attention_mask
+
         return output_dict
 
 
