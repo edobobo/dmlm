@@ -43,9 +43,9 @@ class DistributedBatchSampler(Sampler[Sequence[int]]):
     def __iter__(self) -> Iterator[Sequence[int]]:
         iterator = chunked(self.sampler, self.num_replicas)
 
-        out_dir = Path.cwd() / f'batch_dump/e{self.epoch}'
+        out_dir = Path.cwd() / f"batch_dump/e{self.epoch}"
         out_dir.mkdir(exist_ok=True, parents=True)
-        fd = (out_dir / f'{self.rank}.log').open('w') if self.dump_batches else None
+        fd = (out_dir / f"{self.rank}.log").open("w") if self.dump_batches else None
 
         for replicas_batches in iterator:
             # skips the last batch

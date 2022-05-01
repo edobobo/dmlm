@@ -942,6 +942,7 @@ class EfficientDMLMSeq2SeqDataset(EfficientDMLMDataset):
 
 
 def main():
+    import random
 
     oxford_inventory = SenseInventory(
         "/home/edobobo/PycharmProjects/dmlm/data/inventories/oxf.tsv"
@@ -964,7 +965,17 @@ def main():
     )
 
     for batch in dataloader:
-        print(batch)
+        rand_idx = random.randint(0, batch["input_ids"].shape[0])
+
+        input_tokens = dmlm_dataset.tokenizer.convert_ids_to_tokens(
+            batch["input_ids"][rand_idx]
+        )
+        output_tokens = dmlm_dataset.tokenizer.convert_ids_to_tokens(
+            [e if e > 0 else 0 for e in batch["labels"][rand_idx]]
+        )
+
+        print(f"Input tokens: {input_tokens}")
+        print(f"Output tokens: {output_tokens}")
 
     senses_counter = Counter()
     for sample in dmlm_dataset:

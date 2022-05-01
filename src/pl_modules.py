@@ -1,7 +1,12 @@
 from typing import Any, Optional, Dict
 
 import hydra
-from transformers import AutoConfig, AutoModelForMaskedLM, AutoTokenizer, BartForConditionalGeneration
+from transformers import (
+    AutoConfig,
+    AutoModelForMaskedLM,
+    AutoTokenizer,
+    BartForConditionalGeneration,
+)
 
 import pytorch_lightning as pl
 import torch
@@ -88,7 +93,7 @@ class Seq2SeqDMLM(pl.LightningModule):
             forced_bos_token_id=tokenizer.cls_token_id,
             forced_eos_token_id=tokenizer.sep_token_id,
             pad_token_id=tokenizer.pad_token_id,
-            vocab_size=len(tokenizer)
+            vocab_size=len(tokenizer),
         )
 
         self.model = BartForConditionalGeneration(config)

@@ -37,12 +37,14 @@ class DMLMPLDataModule(pl.LightningDataModule):
             )
 
             if self.conf.train.pl_trainer.gpus > 1:
-                batch_sampler = DistributedBatchSampler(batch_sampler, dump_batches=False)
+                batch_sampler = DistributedBatchSampler(
+                    batch_sampler, dump_batches=False
+                )
 
         return DataLoader(
             self.train_dataset,
             batch_sampler=batch_sampler,
-            batch_size=self.conf.data.train_batch_size,
+            batch_size=self.conf.data.train_batch_size if batch_sampler is None else 1,
             num_workers=self.conf.data.num_workers,
             collate_fn=self.train_dataset.collate_function,
             pin_memory=self.conf.data.get("pin_memory", True),
@@ -61,7 +63,9 @@ class DMLMPLDataModule(pl.LightningDataModule):
         validation_dataloaders = [
             DataLoader(
                 dataset=vd,
-                batch_size=self.conf.data.validation_batch_size,
+                batch_size=self.conf.data.train_batch_size
+                if batch_sampler is None
+                else 1,
                 collate_fn=vd.collate_function,
                 shuffle=False,
                 num_workers=self.conf.data.num_workers,
